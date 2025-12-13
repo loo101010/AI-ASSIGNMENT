@@ -48,10 +48,6 @@ model_choice = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info(
-    "This application predicts whether a customer is likely "
-    "to churn based on their service information."
-)
 
 # ===============================
 # Main Title
@@ -182,4 +178,5 @@ st.markdown("---")
 st.caption(
     "Customer Churn Prediction System | ANN, SVM, KNN | Streamlit Deployment"
 )
+
 
