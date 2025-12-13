@@ -1,5 +1,5 @@
 # ============================================================
-# Customer Churn Prediction - Streamlit App
+# Customer Churn Prediction - Streamlit App (Corrected)
 # ============================================================
 # This app loads trained ML models (ANN, SVM, KNN) and predicts
 # customer churn based on uploaded Telco customer data.
@@ -12,6 +12,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import joblib
+import os
 
 # ============================================================
 # App Configuration
@@ -31,21 +33,28 @@ st.markdown(
 )
 
 # ============================================================
-# Load Saved Models and Objects
+# Load Saved Models and Objects with Error Handling
 # ============================================================
 @st.cache_resource
 def load_models():
-    with open("ann_model.keras", "rb") as f:
-        ann_model = pickle.load(f)
+    # Check if files exist
+    required_files = [
+        "ann_model.joblib",
+        "svm_model.joblib",
+        "knn_model.joblib",
+        "scaler.joblib",
+        "feature_names.pkl"
+    ]
+    for file in required_files:
+        if not os.path.exists(file):
+            st.error(f"❌ Required file '{file}' not found!")
+            st.stop()
 
-    with open("svm_model.joblib", "rb") as f:
-        svm_model = pickle.load(f)
-
-    with open("knn_model.joblib", "rb") as f:
-        knn_model = pickle.load(f)
-
-    with open("scaler.joblib", "rb") as f:
-        scaler = pickle.load(f)
+    # Load models and preprocessing objects
+    ann_model = joblib.load("ann_model.joblib")
+    svm_model = joblib.load("svm_model.joblib")
+    knn_model = joblib.load("knn_model.joblib")
+    scaler = joblib.load("scaler.joblib")
 
     with open("feature_names.pkl", "rb") as f:
         feature_names = pickle.load(f)
@@ -67,7 +76,7 @@ uploaded_file = st.file_uploader(
 )
 
 # ============================================================
-# Data Preprocessing Function (Same as Notebook)
+# Data Preprocessing Function
 # ============================================================
 def preprocess_data(df):
     df_processed = df.copy()
@@ -105,17 +114,12 @@ def preprocess_data(df):
         df_processed, columns=categorical_cols, drop_first=True
     )
 
-    # Encode target if exists
-    if "Churn" in df_processed.columns:
-        df_processed["Churn"] = df_processed["Churn"].map({"Yes": 1, "No": 0})
-
     # Ensure same feature order as training
     df_processed = df_processed.reindex(
         columns=feature_names, fill_value=0
     )
 
     return df_processed
-
 
 # ============================================================
 # Main Prediction Logic
@@ -178,5 +182,6 @@ if uploaded_file is not None:
 st.markdown("---")
 st.markdown(
     "📌 **Note:** This app uses the same preprocessing and models "
-    "trained in the Jupyter Notebook."
+    "trained in the Jupyter Notebook. Ensure all required model files "
+    "are in the same folder as this script."
 )
