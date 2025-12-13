@@ -1,40 +1,22 @@
-# ============================================================
-# Customer Churn Prediction - Streamlit App
-# ============================================================
-# This app loads trained ML models (ANN, SVM, KNN) and predicts
-# customer churn based on uploaded Telco customer data.
-#
-# Run with:
-# streamlit run app.py
-# ============================================================
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
 
-# ============================================================
-# App Configuration
-# ============================================================
+# ===============================
+# Page Configuration
+# ===============================
 st.set_page_config(
     page_title="Customer Churn Prediction",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Customer Churn Prediction App")
-st.markdown(
-    """
-    This application predicts whether a customer will **churn**  
-    using trained **ANN, SVM, and KNN models**.
-    """
-)
-
-# ============================================================
-# Load Saved Models and Objects
-# ============================================================
+# ===============================
+# Load Trained Models and Scaler
+# ===============================
 @st.cache_resource
-def load_models():
+def load_resources():
     with open("ann_model.keras", "rb") as f:
         ann_model = pickle.load(f)
 
@@ -53,91 +35,126 @@ def load_models():
     return ann_model, svm_model, knn_model, scaler, feature_names
 
 
-ann_model, svm_model, knn_model, scaler, feature_names = load_models()
-st.success("✅ Models and preprocessing objects loaded successfully!")
+ann_model, svm_model, knn_model, scaler, feature_names = load_resources()
 
-# ============================================================
-# File Upload
-# ============================================================
-st.header("📁 Upload Customer Data")
+# ===============================
+# Sidebar - Model Selection
+# ===============================
+st.sidebar.title("⚙️ Model Settings")
 
-uploaded_file = st.file_uploader(
-    "Upload Telco Customer CSV file",
-    type=["csv"]
+model_choice = st.sidebar.selectbox(
+    "Select Model",
+    ["ANN", "SVM", "KNN"]
 )
 
-# ============================================================
-# Data Preprocessing Function (Same as Notebook)
-# ============================================================
-def preprocess_data(df):
-    df_processed = df.copy()
+st.sidebar.markdown("---")
+st.sidebar.info(
+    "This application predicts whether a customer is likely "
+    "to churn based on their service information."
+)
 
-    # Drop customerID
-    if "customerID" in df_processed.columns:
-        df_processed.drop("customerID", axis=1, inplace=True)
+# ===============================
+# Main Title
+# ===============================
+st.title("📊 Customer Churn Prediction System")
+st.markdown(
+    """
+    This web application allows users to **manually enter customer information**
+    and predict whether the customer is likely to churn using
+    trained machine learning models.
+    """
+)
 
-    # Convert TotalCharges to numeric
-    if "TotalCharges" in df_processed.columns:
-        df_processed["TotalCharges"] = pd.to_numeric(
-            df_processed["TotalCharges"], errors="coerce"
-        )
-        df_processed["TotalCharges"].fillna(0, inplace=True)
+# ===============================
+# Customer Input Form
+# ===============================
+st.header("🧾 Customer Information")
 
-    # Encode binary variables
-    binary_cols = [
-        "gender", "Partner", "Dependents",
-        "PhoneService", "PaperlessBilling"
-    ]
-    for col in binary_cols:
-        if col in df_processed.columns:
-            df_processed[col] = df_processed[col].map(
-                {"Yes": 1, "No": 0, "Male": 1, "Female": 0}
-            )
+col1, col2, col3 = st.columns(3)
 
-    # One-hot encode categorical variables
-    categorical_cols = [
-        "MultipleLines", "InternetService", "OnlineSecurity",
-        "OnlineBackup", "DeviceProtection", "TechSupport",
-        "StreamingTV", "StreamingMovies", "Contract",
-        "PaymentMethod"
-    ]
-    df_processed = pd.get_dummies(
-        df_processed, columns=categorical_cols, drop_first=True
+with col1:
+    gender = st.selectbox("Gender", ["Male", "Female"])
+    senior = st.selectbox("Senior Citizen", [0, 1])
+    partner = st.selectbox("Partner", ["Yes", "No"])
+    dependents = st.selectbox("Dependents", ["Yes", "No"])
+    tenure = st.slider("Tenure (months)", 0, 72, 12)
+
+with col2:
+    phone_service = st.selectbox("Phone Service", ["Yes", "No"])
+    paperless = st.selectbox("Paperless Billing", ["Yes", "No"])
+    monthly_charges = st.number_input("Monthly Charges", 0.0, 200.0, 70.0)
+    total_charges = st.number_input("Total Charges", 0.0, 10000.0, 1000.0)
+
+with col3:
+    contract = st.selectbox(
+        "Contract Type",
+        ["Month-to-month", "One year", "Two year"]
     )
 
-    # Encode target if exists
-    if "Churn" in df_processed.columns:
-        df_processed["Churn"] = df_processed["Churn"].map({"Yes": 1, "No": 0})
-
-    # Ensure same feature order as training
-    df_processed = df_processed.reindex(
-        columns=feature_names, fill_value=0
+    internet = st.selectbox(
+        "Internet Service",
+        ["DSL", "Fiber optic", "No"]
     )
 
-    return df_processed
-
-
-# ============================================================
-# Main Prediction Logic
-# ============================================================
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-
-    st.subheader("🔍 Uploaded Data Preview")
-    st.dataframe(df.head())
-
-    # Preprocess data
-    X_processed = preprocess_data(df)
-
-    # Scale features
-    X_scaled = scaler.transform(X_processed)
-
-    # Model selection
-    st.subheader("🤖 Select Model")
-    model_choice = st.selectbox(
-        "Choose a trained model:",
-        ["ANN", "SVM", "KNN"]
+    payment = st.selectbox(
+        "Payment Method",
+        [
+            "Electronic check",
+            "Mailed check",
+            "Bank transfer (automatic)",
+            "Credit card (automatic)"
+        ]
     )
+
+# ===============================
+# Prepare Input Data
+# ===============================
+def prepare_input_data():
+    data = {
+        "gender": 1 if gender == "Male" else 0,
+        "SeniorCitizen": senior,
+        "Partner": 1 if partner == "Yes" else 0,
+        "Dependents": 1 if dependents == "Yes" else 0,
+        "tenure": tenure,
+        "PhoneService": 1 if phone_service == "Yes" else 0,
+        "PaperlessBilling": 1 if paperless == "Yes" else 0,
+        "MonthlyCharges": monthly_charges,
+        "TotalCharges": total_charges,
+    }
+
+    input_df = pd.DataFrame([data])
+
+    # Initialize all one-hot encoded columns as 0
+    for col in feature_names:
+        if col not in input_df.columns:
+            input_df[col] = 0
+
+    # Contract
+    if contract != "Month-to-month":
+        input_df[f"Contract_{contract}"] = 1
+
+    # Internet Service
+    if internet != "DSL":
+        input_df[f"InternetService_{internet}"] = 1
+
+    # Payment Method
+    input_df[f"PaymentMethod_{payment}"] = 1
+
+    # Reorder columns to match training data
+    input_df = input_df[feature_names]
+
+    return input_df
+
+# ===============================
+# Prediction Section
+# ===============================
+st.markdown("---")
+st.header("🔮 Prediction Result")
+
+if st.button("Predict Churn"):
+
+    input_df = prepare_input_data()
+    input_scaled = scaler.transform(input_df)
 
     if model_choice == "ANN":
         model = ann_model
@@ -146,37 +163,24 @@ if uploaded_file is not None:
     else:
         model = knn_model
 
-    # Predict
-    predictions = model.predict(X_scaled)
-    probabilities = model.predict_proba(X_scaled)[:, 1]
+    prediction = model.predict(input_scaled)[0]
+    probability = model.predict_proba(input_scaled)[0][1]
 
-    # ========================================================
-    # Display Results
-    # ========================================================
-    st.subheader("📊 Prediction Results")
+    if prediction == 1:
+        st.error(
+            f"⚠️ Customer is **likely to churn**\n\n"
+            f"Churn Probability: **{probability:.2%}**"
+        )
+    else:
+        st.success(
+            f"✅ Customer is **not likely to churn**\n\n"
+            f"Churn Probability: **{probability:.2%}**"
+        )
 
-    results_df = pd.DataFrame({
-        "Prediction": np.where(predictions == 1, "Churn", "Not Churn"),
-        "Churn Probability": probabilities.round(4)
-    })
-
-    st.dataframe(results_df)
-
-    # Summary statistics
-    churn_rate = (predictions.sum() / len(predictions)) * 100
-
-    st.metric(
-        label="📉 Predicted Churn Rate",
-        value=f"{churn_rate:.2f}%"
-    )
-
-    st.success("✅ Prediction completed successfully!")
-
-# ============================================================
+# ===============================
 # Footer
-# ============================================================
+# ===============================
 st.markdown("---")
-st.markdown(
-    "📌 **Note:** This app uses the same preprocessing and models "
-    "trained in the Jupyter Notebook."
+st.caption(
+    "Customer Churn Prediction System | ANN, SVM, KNN | Streamlit Deployment"
 )
