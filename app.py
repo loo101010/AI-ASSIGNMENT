@@ -59,9 +59,7 @@ st.sidebar.info(
 st.title("📊 Customer Churn Prediction System")
 st.markdown(
     """
-    This web application allows users to **manually enter customer information**
-    and predict whether the customer is likely to churn using
-    trained machine learning models.
+    Input your data
     """
 )
 
@@ -184,3 +182,4 @@ st.markdown("---")
 st.caption(
     "Customer Churn Prediction System | ANN, SVM, KNN | Streamlit Deployment"
 )
+
